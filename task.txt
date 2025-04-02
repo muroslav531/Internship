@@ -1,0 +1,47 @@
+
+#!/bin/bash
+
+LOG_FILE="task.log"
+
+if [ ! -f "$LOG_FILE" ]; then
+  echo "Помилка: Лог-файл '$LOG_FILE' не знайдено."
+  exit 1
+fi
+
+# Підрахунок за патернами 'service ... started/stopped'
+STARTED_COUNT=$(grep -iE "service .* (has been )?started" "$LOG_FILE" | wc -l)
+STOPPED_COUNT=$(grep -iE "service .* (has been )?stopped" "$LOG_FILE" | wc -l)
+echo "Знайдено 'service ... started': $STARTED_COUNT"
+echo "Знайдено 'service ... stopped': $STOPPED_COUNT"
+
+# Підрахунок за ключовими словами
+DB_CREATING_COUNT=$(grep -F -c "Creating DB" "$LOG_FILE")
+INSTALLER_FINISHED_COUNT=$(grep -F -c "Finished Software installer" "$LOG_FILE")
+echo "Знайдено 'Creating DB': $DB_CREATING_COUNT"
+echo "Знайдено 'Finished Software installer': $INSTALLER_FINISHED_COUNT"
+
+# Пошук паролів за патернами
+echo "Знайдені паролі:"
+PASSWORDS=$(grep -oP "'(admin_pass|softdbpass)' => '\K[^']+" "$LOG_FILE")
+
+if [[ -z "$PASSWORDS" ]]; then
+    echo "❌ Паролі не знайдено (за патернами 'admin_pass'/'softdbpass' => ...)"
+else
+    echo "$PASSWORDS" # Виводимо знайдені паролі
+    echo "Перевірка паролів на простоту..."
+    SIMPLE_PASSWORDS=("123456" "password" "qwerty" "111111" "123123" "abc123" "password1" "admin" "admin123" "letmein" "welcome" "monkey" "Password_123")
+
+    # Перевірка кожного знайденого пароля
+    while IFS= read -r PASSWORD; do
+        if [[ -n "$PASSWORD" ]]; then
+            if [[ ${#PASSWORD} -lt 8 ]]; then
+                echo "❌ Простий пароль (короткий): $PASSWORD"
+            # Використовуємо метод порівняння
+            elif [[ " ${SIMPLE_PASSWORDS[@]} " =~ " ${PASSWORD} " ]]; then
+                echo "❌ Простий пароль (зазвичай використовується): $PASSWORD"
+            else
+                echo "✅ Надійний пароль: $PASSWORD"
+            fi
+        fi
+    done <<< "$PASSWORDS"
+fi
