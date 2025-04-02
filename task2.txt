@@ -7,13 +7,13 @@ if [ ! -f "$LOG_FILE" ]; then
   exit 1
 fi
 
-# Підрахунок за стандартними патернами 'service ... started/stopped'
+# Підрахунок за патернами 'service ... started/stopped'
 STARTED_COUNT=$(grep -iE "service .* (has been )?started" "$LOG_FILE" | wc -l)
 STOPPED_COUNT=$(grep -iE "service .* (has been )?stopped" "$LOG_FILE" | wc -l)
 echo "Знайдено 'service ... started': $STARTED_COUNT"
 echo "Знайдено 'service ... stopped': $STOPPED_COUNT"
 
-# Підрахунок за специфічними ключовими словами
+# Підрахунок за  ключовими словами
 DB_CREATING_COUNT=$(grep -F -c "Creating DB" "$LOG_FILE")
 INSTALLER_FINISHED_COUNT=$(grep -F -c "Finished Software installer" "$LOG_FILE")
 echo "Знайдено 'Creating DB': $DB_CREATING_COUNT"
@@ -39,7 +39,7 @@ else
             # 2. Перевірка на наявність у списку поширених простих паролів
             elif [[ " ${SIMPLE_PASSWORDS[@]} " =~ " ${PASSWORD} " ]]; then
                 echo "❌ Простий пароль (зазвичай використовується): $PASSWORD"
-            # 3. Детальна перевірка складності (якщо довжина >= 8 і не в списку простих)
+            # 3. Перевірка складності (якщо довжина >= 8 і не в списку простих)
             else
                 has_upper=false
                 has_lower=false
@@ -68,8 +68,8 @@ else
                     missing_elements+=("цифра")
                 fi
 
-                # Перевірка наявності спеціального символу (не літера і не цифра)
-                # [^[:alnum:]] відповідає будь-якому символу, що не є літерою або цифрою
+                # Перевірка наявності спеціального символу
+                # [^[:alnum:]] 
                 if [[ "$PASSWORD" == *[^[:alnum:]]* ]]; then
                     has_symbol=true
                 else
