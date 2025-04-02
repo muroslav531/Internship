@@ -1,0 +1,92 @@
+#!/bin/bash
+
+LOG_FILE="Новий Text Document.txt"
+
+if [ ! -f "$LOG_FILE" ]; then
+  echo "Помилка: Лог-файл '$LOG_FILE' не знайдено."
+  exit 1
+fi
+
+# Підрахунок за стандартними патернами 'service ... started/stopped'
+STARTED_COUNT=$(grep -iE "service .* (has been )?started" "$LOG_FILE" | wc -l)
+STOPPED_COUNT=$(grep -iE "service .* (has been )?stopped" "$LOG_FILE" | wc -l)
+echo "Знайдено 'service ... started': $STARTED_COUNT"
+echo "Знайдено 'service ... stopped': $STOPPED_COUNT"
+
+# Підрахунок за специфічними ключовими словами
+DB_CREATING_COUNT=$(grep -F -c "Creating DB" "$LOG_FILE")
+INSTALLER_FINISHED_COUNT=$(grep -F -c "Finished Software installer" "$LOG_FILE")
+echo "Знайдено 'Creating DB': $DB_CREATING_COUNT"
+echo "Знайдено 'Finished Software installer': $INSTALLER_FINISHED_COUNT"
+
+# Пошук паролів (патерни користувача)
+echo "Знайдені паролі:"
+PASSWORDS=$(grep -oP "'(admin_pass|softdbpass)' => '\K[^']+" "$LOG_FILE")
+
+if [[ -z "$PASSWORDS" ]]; then
+    echo "❌ Паролі не знайдено (за патернами 'admin_pass'/'softdbpass' => ...)"
+else
+    echo "$PASSWORDS" # Виводимо знайдені паролі
+    echo "Перевірка паролів на простоту..."
+    SIMPLE_PASSWORDS=("123456" "password" "qwerty" "111111" "123123" "abc123" "password1" "admin" "admin123" "letmein" "welcome" "monkey" "Password_123")
+
+    # Перевірка кожного знайденого пароля
+    while IFS= read -r PASSWORD; do
+        if [[ -n "$PASSWORD" ]]; then
+            # 1. Перевірка на мінімальну довжину
+            if [[ ${#PASSWORD} -lt 8 ]]; then
+                echo "❌ Простий пароль (короткий - менше 8 символів): $PASSWORD"
+            # 2. Перевірка на наявність у списку поширених простих паролів
+            elif [[ " ${SIMPLE_PASSWORDS[@]} " =~ " ${PASSWORD} " ]]; then
+                echo "❌ Простий пароль (зазвичай використовується): $PASSWORD"
+            # 3. Детальна перевірка складності (якщо довжина >= 8 і не в списку простих)
+            else
+                has_upper=false
+                has_lower=false
+                has_digit=false
+                has_symbol=false
+                missing_elements=() # Масив для зберігання відсутніх елементів складності
+
+                # Перевірка наявності великої літери
+                if [[ "$PASSWORD" == *[[:upper:]]* ]]; then
+                    has_upper=true
+                else
+                    missing_elements+=("велика літера")
+                fi
+
+                # Перевірка наявності маленької літери
+                if [[ "$PASSWORD" == *[[:lower:]]* ]]; then
+                    has_lower=true
+                else
+                    missing_elements+=("маленька літера")
+                fi
+
+                # Перевірка наявності цифри
+                if [[ "$PASSWORD" == *[[:digit:]]* ]]; then
+                    has_digit=true
+                else
+                    missing_elements+=("цифра")
+                fi
+
+                # Перевірка наявності спеціального символу (не літера і не цифра)
+                # [^[:alnum:]] відповідає будь-якому символу, що не є літерою або цифрою
+                if [[ "$PASSWORD" == *[^[:alnum:]]* ]]; then
+                    has_symbol=true
+                else
+                    missing_elements+=("спец. символ")
+                fi
+
+                # Визначення результату на основі всіх перевірок складності
+                if $has_upper && $has_lower && $has_digit && $has_symbol; then
+                    # Якщо всі критерії виконані (і довжина >= 8, що перевірено раніше)
+                    echo "✅ Надійний пароль (відповідає критеріям складності): $PASSWORD"
+                else
+                    # Якщо хоча б один критерій не виконано
+                    # Об'єднуємо відсутні елементи через кому для виводу
+                    missing_str=$(IFS=', '; echo "${missing_elements[*]}")
+                    echo "❌ Простий пароль (не відповідає критеріям - не вистачає: ${missing_str}): $PASSWORD"
+                fi
+            fi
+        fi
+    done <<< "$PASSWORDS"
+fi
