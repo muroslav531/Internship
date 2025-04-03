@@ -36,7 +36,6 @@ else
         if [[ -n "$PASSWORD" ]]; then
             if [[ ${#PASSWORD} -lt 8 ]]; then
                 echo "❌ Простий пароль: $PASSWORD"
-            # Використовуємо метод порівняння
             elif [[ " ${SIMPLE_PASSWORDS[@]} " =~ " ${PASSWORD} " ]]; then
                 echo "❌ Простий пароль (зазвичай використовується): $PASSWORD"
             else
