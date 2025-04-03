@@ -27,7 +27,7 @@ PASSWORDS=$(grep -oP "'(admin_pass|softdbpass)' => '\K[^']+" "$LOG_FILE")
 if [[ -z "$PASSWORDS" ]]; then
     echo "❌ Паролі не знайдено (за патернами 'admin_pass'/'softdbpass' => ...)"
 else
-    echo "$PASSWORDS" # Виводимо знайдені паролі
+    echo "$PASSWORDS" # Знайдені паролі
     echo "Перевірка паролів на простоту..."
     SIMPLE_PASSWORDS=("123456" "password" "qwerty" "111111" "123123" "abc123" "password1" "admin" "admin123" "letmein" "welcome" "monkey" "Password_123")
 
@@ -35,7 +35,7 @@ else
     while IFS= read -r PASSWORD; do
         if [[ -n "$PASSWORD" ]]; then
             if [[ ${#PASSWORD} -lt 8 ]]; then
-                echo "❌ Простий пароль (короткий): $PASSWORD"
+                echo "❌ Простий пароль: $PASSWORD"
             # Використовуємо метод порівняння
             elif [[ " ${SIMPLE_PASSWORDS[@]} " =~ " ${PASSWORD} " ]]; then
                 echo "❌ Простий пароль (зазвичай використовується): $PASSWORD"
