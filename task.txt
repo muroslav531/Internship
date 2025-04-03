@@ -31,7 +31,7 @@ else
     echo "Перевірка паролів на простоту..."
     SIMPLE_PASSWORDS=("123456" "password" "qwerty" "111111" "123123" "abc123" "password1" "admin" "admin123" "letmein" "welcome" "monkey" "Password_123")
 
-    # Перевірка кожного знайденого пароля
+    # Перевірка 
     while IFS= read -r PASSWORD; do
         if [[ -n "$PASSWORD" ]]; then
             if [[ ${#PASSWORD} -lt 8 ]]; then
