@@ -1,25 +1,69 @@
-# Bash Learning & Scripting 
+# Розгортання трьох віртуальних машин з SFTP-серверами та аудитом безпеки
 
-1. **Get to know with Bash on SoftServe Academy**  
-   - **Objective**: Learn the basics of Bash scripting and system management.  
-   - **Activities**: Watch tutorials, write scripts, and perform hands-on exercises.
-   - **Additional Tasks**: After completing the tutorials, complete a **quiz** to test your knowledge.
+Це завдання передбачає розгортання трьох ідентичних віртуальних машин за допомогою Vagrant. Кожна віртуальна машина буде налаштована як SFTP-сервер, матиме доступ за SSH-ключами та пройде базовий аудит безпеки за допомогою інструменту `rkhunter`.
 
-2. **Download the file**  
-   - **Objective**: Write a Bash script that:
-     - Finds and counts the number of services that have been started and stopped on the system.
-     - Identifies all passwords on the system and checks them for simplicity (a basic security measure).
-   - **Testing**: After writing the script, run it on your system and verify the results.
+## Опис конфігурації Vagrantfile
 
----
+Наданий файл `Vagrantfile` автоматизує процес створення та налаштування віртуальних машин. Розглянемо ключові секції цього файлу:
 
-### **Important Resources:**
+1.  **Базова конфігурація:**
+    * `Vagrant.configure("2") do |config|`: Ініціалізує конфігурацію Vagrant версії 2.
+    * `config.vm.box = "bento/ubuntu-22.04"`: Визначає базовий образ операційної системи Ubuntu 22.04 LTS, який буде використаний для створення віртуальних машин.
 
-- [**Linux Bash Tutorial**](https://www.youtube.com/watch?v=m30JBWD6pKU)  
-   Watch the tutorial to get started with Bash scripting. The video will walk you through the basics and advanced concepts.
-   
-- [**Download Script File**](https://softserve.academy/pluginfile.php/452507/mod_resource/content/1/softaculous%20%282%29.log)  
-   Download the file to begin writing your script. It contains necessary details and inputs for your task.
+2.  **Визначення списку серверів:**
+    * `servers = [...]`: Створює масив об'єктів, де кожен об'єкт представляє віртуальну машину та містить її ім'я (`name`) та IP-адресу (`ip`). У цьому випадку визначено три сервери:
+        * `sftp-server-1` з IP-адресою `192.168.33.10`
+        * `sftp-server-2` з IP-адресою `192.168.33.11`
+        * `sftp-server-3` з IP-адресою `192.168.33.12`
 
----
+3.  **Ітерація та налаштування кожної віртуальної машини:**
+    * `servers.each do |server| ... end`: Цей цикл проходить по кожному об'єкту в масиві `servers` і виконує налаштування для кожної віртуальної машини окремо.
+    * `config.vm.define server[:name] do |s| ... end`: Визначає віртуальну машину з іменем, взятим з поля `name` поточного об'єкта `server`. Блок `do |s|` містить специфічні налаштування для цієї віртуальної машини.
 
+4.  **Специфічні налаштування кожної віртуальної машини:**
+    * `s.vm.hostname = server[:name]`: Встановлює ім'я хоста віртуальної машини відповідно до її визначення у списку.
+    * `s.vm.network "private_network", ip: server[:ip]`: Налаштовує приватну мережу для віртуальної машини з IP-адресою, взятою з поля `ip` поточного об'єкта `server`. Це дозволяє віртуальним машинам спілкуватися між собою та з хост-машиною в приватній мережі.
+    * `s.ssh.insert_key = false`: Відключає автоматичне додавання Vagrant-згенерованого SSH-ключа до файлу авторизованих ключів віртуальної машини. Це необхідно для використання власного публічного ключа.
+    * `s.vm.provision "file", source: "~/.ssh/id_rsa.pub", destination: "/home/vagrant/.ssh/authorized_keys"`: Копіює ваш локальний публічний SSH-ключ (зазвичай розташований у `~/.ssh/id_rsa.pub`) на віртуальну машину в директорію `/home/vagrant/.ssh/authorized_keys`. Це налаштовує доступ до віртуальної машини без пароля за допомогою вашого приватного ключа.
+
+5.  **Провізія за допомогою Shell-скрипту:**
+    * `s.vm.provision "shell", inline: <<-SHELL ... SHELL`: Виконує вбудований shell-скрипт після створення та запуску віртуальної машини. Цей скрипт відповідає за встановлення та налаштування необхідного програмного забезпечення та параметрів безпеки:
+        * `sudo apt update && sudo apt install -y openssh-server rkhunter`: Оновлює список пакетів та встановлює SSH-сервер (`openssh-server`) та інструмент для аудиту безпеки (`rkhunter`).
+        * `sudo systemctl enable ssh`: Вмикає автоматичний запуск SSH-сервісу при завантаженні системи.
+        * `sudo systemctl restart ssh`: Перезапускає SSH-сервіс для застосування змін.
+        * **Налаштування SFTP:**
+            * `sudo sed -i 's/Subsystem sftp .*/Subsystem sftp internal-sftp/' /etc/ssh/sshd_config`: Замінює стандартний обробник SFTP на вбудований (`internal-sftp`) в конфігураційному файлі SSH.
+            * `echo 'Match Group sftpusers' | sudo tee -a /etc/ssh/sshd_config`: Додає блок `Match Group sftpusers` до конфігурації SSH. Це дозволить застосувати специфічні налаштування для користувачів, що входять до групи `sftpusers`.
+            * `echo '  ChrootDirectory /home/%u' | sudo tee -a /etc/ssh/sshd_config`: Встановлює домашню директорію користувача як кореневу директорію для SFTP-з'єднання (chroot). `%u` замінюється на ім'я користувача.
+            * `echo '  ForceCommand internal-sftp' | sudo tee -a /etc/ssh/sshd_config`: Обмежує користувачів групи `sftpusers` тільки SFTP-доступом, забороняючи їм виконання інших команд через SSH.
+            * `sudo systemctl restart ssh`: Знову перезапускає SSH-сервіс для застосування змін у конфігурації SFTP.
+        * **Створення групи SFTP та додавання користувача:**
+            * `sudo groupadd sftpusers`: Створює нову групу користувачів під назвою `sftpusers`.
+            * `sudo usermod -aG sftpusers vagrant`: Додає існуючого користувача `vagrant` до групи `sftpusers`.
+        * **Налаштування прав доступу до домашньої директорії:**
+            * `sudo chown root:root /home/vagrant`: Змінює власника директорії `/home/vagrant` на користувача `root` та групу `root`.
+            * `sudo chmod 755 /home/vagrant`: Встановлює права доступу до директорії `/home/vagrant` як `rwxr-xr-x` (власник має права на читання, запис та виконання, група та інші мають права лише на читання та виконання). Це необхідно для правильної роботи chroot для SFTP.
+        * **Аудит безпеки за допомогою rkhunter:**
+            * `sudo rkhunter --update`: Оновлює базу даних `rkhunter` до останньої версії.
+            * `sudo rkhunter --propupd`: Оновлює базові властивості файлів для подальшого виявлення змін.
+
+## Виконання завдання
+
+Щоб розгорнути ці три віртуальні машини, виконайте наступні кроки:
+
+1.  **Переконайтеся, що у вас встановлено Vagrant та VirtualBox (або інший провайдер, якщо ви його використовуєте).**
+2.  **Збережіть наданий код як файл з назвою `Vagrantfile` у порожній директорії.**
+3.  **Відкрийте термінал або командний рядок, перейдіть до цієї директорії.**
+4.  **Запустіть команду `vagrant up`.** Vagrant завантажить базовий образ (якщо він ще не завантажений), створить три віртуальні машини згідно з конфігурацією у `Vagrantfile` та виконає налаштування (провізіювання) для кожної з них.
+
+## Результат виконання
+
+Після успішного виконання команди `vagrant up`, ви матимете три віртуальні машини, кожна з яких:
+
+* Має встановлений та налаштований SFTP-сервер, доступний для користувача `vagrant`, який буде автоматично перенаправлений у свою домашню директорію при підключенні через SFTP.
+* Доступна через SSH за допомогою вашого приватного SSH-ключа (без необхідності введення пароля).
+* Просканована на наявність руткітів та інших шкідливих програм за допомогою `rkhunter`.
+
+Ви можете перевірити статус віртуальних машин за допомогою команди `vagrant status`. Щоб підключитися до однієї з віртуальних машин через SSH, використовуйте команду `vagrant ssh <ім'я_сервера>` (наприклад, `vagrant ssh sftp-server-1`). Для підключення через SFTP ви можете використовувати будь-який SFTP-клієнт, вказавши IP-адресу відповідної віртуальної машини та використовуючи ваш приватний SSH-ключ для аутентифікації користувача `vagrant`.
+
+Цей `Vagrantfile` забезпечує автоматизоване та відтворюване розгортання трьох захищених SFTP-серверів з базовим аудитом безпеки.
