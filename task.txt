@@ -4,7 +4,7 @@
 LOG_FILE="task.log"
 
 if [ ! -f "$LOG_FILE" ]; then
-  echo "Помилка: Лог-файл '$LOG_FILE' не знайдено."
+  echo "Лог-файл '$LOG_FILE' не знайдено."
   exit 1
 fi
 
