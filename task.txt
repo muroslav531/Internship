@@ -25,7 +25,7 @@ echo "Знайдені паролі:"
 PASSWORDS=$(grep -oP "'(admin_pass|softdbpass)' => '\K[^']+" "$LOG_FILE")
 
 if [[ -z "$PASSWORDS" ]]; then
-    echo "❌ Паролі не знайдено (за патернами 'admin_pass'/'softdbpass' => ...)"
+    echo "❌ Паролі не знайдено"
 else
     echo "$PASSWORDS" # Знайдені паролі
     echo "Перевірка паролів на простоту..."
