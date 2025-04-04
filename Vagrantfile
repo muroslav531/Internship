@@ -15,7 +15,6 @@ Vagrant.configure("2") do |config|
         sudo systemctl enable ssh
         sudo systemctl restart ssh
 
-        # Правильні права для SSH-ключа
         sudo chown vagrant:vagrant /home/vagrant/.ssh/authorized_keys
         sudo chmod 600 /home/vagrant/.ssh/authorized_keys
       SHELL
