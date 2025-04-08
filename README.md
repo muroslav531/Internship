@@ -1,25 +1,62 @@
-# Bash Learning & Scripting 
+# 📦 DevOps Project: SFTP VMs with Automated File Exchange
 
-1. **Get to know with Bash on SoftServe Academy**  
-   - **Objective**: Learn the basics of Bash scripting and system management.  
-   - **Activities**: Watch tutorials, write scripts, and perform hands-on exercises.
-   - **Additional Tasks**: After completing the tutorials, complete a **quiz** to test your knowledge.
+## 📝 Task Overview
 
-2. **Download the file**  
-   - **Objective**: Write a Bash script that:
-     - Finds and counts the number of services that have been started and stopped on the system.
-     - Identifies all passwords on the system and checks them for simplicity (a basic security measure).
-   - **Testing**: After writing the script, run it on your system and verify the results.
+This project provisions **three virtual machines** using **Vagrant**, each running a configured **SFTP server**. Key-based SSH access is set up between the machines, and a basic security audit is performed. Additionally, a scheduled script enables automated file creation across the SFTP network.
 
 ---
 
-### **Important Resources:**
+## ⚙️ Technical Requirements
 
-- [**Linux Bash Tutorial**](https://www.youtube.com/watch?v=m30JBWD6pKU)  
-   Watch the tutorial to get started with Bash scripting. The video will walk you through the basics and advanced concepts.
-   
-- [**Download Script File**](https://softserve.academy/pluginfile.php/452507/mod_resource/content/1/softaculous%20%282%29.log)  
-   Download the file to begin writing your script. It contains necessary details and inputs for your task.
+### 1. Infrastructure Setup
+- Provision **3 VMs** using **Vagrant**.
+- Assign **static IPs** to each VM for direct access.
+- Use Vagrant provisioning (inline shell or external script) to automate setup.
+
+### 2. SFTP Server Configuration
+- Install and configure **OpenSSH** on each VM.
+- Enable **SFTP** functionality for incoming connections.
+
+### 3. SSH Key Authentication
+- Generate SSH keys.
+- Set up **key-based authentication** between all machines.
+- Disable password login for better security.
+
+### 4. Security Auditing
+- Install **rkhunter** or similar tool on each VM.
+- Run a security scan after provisioning.
+- Save logs in a readable location for inspection.
 
 ---
 
+## 🔁 Automated File Exchange
+
+Each VM runs a **Bash script** every **5 minutes** that:
+
+- Connects via **SFTP** to the other two VMs.
+- Creates a file in a shared directory on the remote host.
+- Writes the **current date, time**, and the **name of the VM** that created the file.
+
+### Example File Content:
+
+- The script is scheduled using `cron` or `systemd` timers.
+- File names and target directories can be customized in the script.
+
+---
+
+## 📁 Deliverables
+
+- `Vagrantfile` for provisioning all VMs.
+- Shell scripts for:
+  - Installing and configuring SFTP.
+  - Setting up SSH key authentication.
+  - Running security audit tools.
+- Bash script for automated file exchange via SFTP.
+- `README.md` with setup instructions, usage, and troubleshooting.
+
+---
+
+## 🚀 How to Run
+
+```bash
+vagrant up
